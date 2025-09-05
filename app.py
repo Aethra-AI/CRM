@@ -2927,7 +2927,7 @@ def create_initial_user():
     try:
         # --- CONFIGURA TUS CREDENCIALES INICIALES AQUÍ ---
         initial_email = "agencia.henmir@gmail.com"
-        initial_password = "Admin1231" # ¡CÁMBIALA!
+        initial_password = "Nc044700" # ¡CÁMBIALA!
 
         # Revisa si el usuario ya existe
         cursor.execute("SELECT id FROM Users WHERE email = %s", (initial_email,))
