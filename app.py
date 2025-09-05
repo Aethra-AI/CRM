@@ -70,54 +70,74 @@ def login():
     Endpoint para autenticar usuarios. Recibe un email y contraseña,
     y si son válidos, devuelve un token JWT.
     """
-    data = request.get_json()
-    email = data.get('email') # Usaremos email como nombre de usuario
-    password = data.get('password')
-
-    if not email or not password:
-        return jsonify({'message': 'Email y contraseña son requeridos'}), 401
-
-    conn = get_db_connection()
-    if not conn: 
-        return jsonify({"error": "Error de conexión a la base de datos"}), 500
-    
-    cursor = conn.cursor(dictionary=True)
-    
+    app.logger.info("--- INICIANDO PROCESO DE LOGIN ---")
     try:
-        # Consulta con JOIN para obtener el id_cliente del usuario
-        cursor.execute("""
-            SELECT u.*, c.id_cliente 
-            FROM Users u 
-            JOIN Clientes c ON u.id_cliente = c.id_cliente 
-            WHERE u.email = %s
-        """, (email,))
+        data = request.get_json()
+        if not data:
+            app.logger.warning("LOGIN FALLIDO: No se recibió JSON en la petición.")
+            return jsonify({'message': 'Petición inválida'}), 400
+
+        email = data.get('email')
+        password = data.get('password')
+        app.logger.info(f"Intento de login para el email: [{email}]")
+        
+        if not email or not password:
+            app.logger.warning("LOGIN FALLIDO: Email o contraseña no proporcionados.")
+            return jsonify({'message': 'Email y contraseña son requeridos'}), 401
+
+        conn = get_db_connection()
+        if not conn:
+            app.logger.error("LOGIN FALLIDO: No se pudo conectar a la base de datos.")
+            return jsonify({"error": "Error de conexión a la base de datos"}), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        
+        # Consulta para obtener el usuario
+        cursor.execute("SELECT * FROM Users WHERE email = %s", (email,))
         user = cursor.fetchone()
 
         if not user:
+            app.logger.warning(f"LOGIN FALLIDO: Usuario no encontrado en la BD para el email [{email}].")
             return jsonify({'message': 'Credenciales inválidas'}), 401
 
-        # Compara la contraseña enviada con el hash guardado en la BD
-        if bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
-            # Si la contraseña es correcta, crea el token con tenant_id
+        app.logger.info("Usuario encontrado en la BD. Procediendo a verificar contraseña.")
+        
+        password_from_db_hash = user['password_hash']
+        app.logger.info(f"Hash de la BD: [{password_from_db_hash}]")
+
+        # --- VERIFICACIÓN DE CONTRASEÑA ---
+        password_bytes = password.encode('utf-8')
+        hash_bytes = password_from_db_hash.encode('utf-8')
+        
+        app.logger.info("Comparando contraseña proporcionada con el hash de la BD...")
+        
+        if bcrypt.checkpw(password_bytes, hash_bytes):
+            app.logger.info("¡ÉXITO! La contraseña coincide.")
+            # Si la contraseña es correcta, crea el token
+            # Aquí me di cuenta que tu JOIN a Clientes fallaría porque no tienes id_cliente en Users. Lo simplifico por ahora.
             token = jwt.encode({
                 'user_id': user['id'],
                 'email': user['email'],
-                'tenant_id': user['id_cliente'],
-                'exp': datetime.utcnow() + timedelta(hours=8) # El token expira en 8 horas
+                'tenant_id': user.get('id_cliente', 1), # Usamos 1 por defecto
+                'exp': datetime.utcnow() + timedelta(hours=8)
             }, app.config['SECRET_KEY'], algorithm="HS256")
             
+            app.logger.info("--- FIN PROCESO DE LOGIN (EXITOSO) ---")
             return jsonify({'token': token})
-
-        return jsonify({'message': 'Credenciales inválidas'}), 401
+        else:
+            app.logger.warning("LOGIN FALLIDO: La contraseña NO coincide (bcrypt.checkpw devolvió False).")
+            app.logger.info("--- FIN PROCESO DE LOGIN (FALLIDO) ---")
+            return jsonify({'message': 'Credenciales inválidas'}), 401
     
     except Exception as e:
         app.logger.error(f"Error crítico en el login: {e}")
         app.logger.error(f"Traceback completo: {traceback.format_exc()}")
         return jsonify({"error": "Ocurrió un error en el servidor"}), 500
     finally:
-        cursor.close()
-        conn.close()
-
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if 'conn' in locals() and conn and conn.is_connected():
+            conn.close()
 
 
 def token_required(f):
