@@ -1349,6 +1349,7 @@ def update_application_status(id_postulacion):
 # SECCIÓN 5: REPORTES Y KPIS
 # ===============================================================
 @app.route('/api/reports/kpi', methods=['GET'])
+@token_required
 def get_kpi_reports():
     conn = get_db_connection()
     if not conn: return jsonify({"error": "Error de BD"}), 500
@@ -2467,6 +2468,7 @@ def bot_validate_registration():
         
 
 @app.route('/api/dashboard/activity_chart', methods=['GET'])
+@token_required
 def get_dashboard_activity():
     conn = get_db_connection()
     if not conn: return jsonify({"error": "DB connection failed"}), 500
