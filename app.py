@@ -52,8 +52,22 @@ if not app.debug:
 
 github_pages_url = "https://henmir-hn.github.io/portal-empleo-henmir"
 
-CORS(app)
+# Reemplaza la línea CORS(app) con este bloque
+CORS(app, 
+     origins=["http://127.0.0.1:5500", "https://henmir-hn.github.io"], # Orígenes permitidos (desarrollo y producción)
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],              # Métodos HTTP permitidos
+     allow_headers=["Content-Type", "Authorization", "X-API-Key"],    # Cabeceras permitidas
+     supports_credentials=True
+)
 
+# También, para las rutas públicas, necesitas una configuración separada o una más general
+# La siguiente configuración es más simple y debería funcionar para ambos casos:
+# Descomenta esta y comenta la anterior si sigues teniendo problemas.
+#
+# CORS(app, origins=["http://127.0.0.1:5500", "https://henmir-hn.github.io"], 
+#      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], 
+#      allow_headers=["Content-Type", "Authorization", "X-API-Key"], 
+#      supports_credentials=True)
 
 openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 # AGREGA ESTE BLOQUE COMPLETO DESPUÉS DE LA LÍNEA 'openai_client = ...'
@@ -1724,6 +1738,27 @@ def search_candidates():
         
     except Exception as e: 
         return jsonify({"error": str(e)}), 500
+
+
+# ✨ SOLUCIÓN: Creamos el endpoint que faltaba
+@app.route('/api/notifications', methods=['GET'])
+@token_required
+def get_notifications():
+    """
+    Devuelve notificaciones para el panel de control del CRM.
+    POR AHORA: Devuelve una lista vacía para evitar errores 404.
+    FUTURO: Aquí puedes implementar la lógica para leer notificaciones de la BD.
+    """
+    try:
+        # Lógica futura para obtener notificaciones...
+        # Por ahora, simplemente retornamos una lista vacía con un status 200 OK.
+        return jsonify([])
+    except Exception as e:
+        app.logger.error(f"Error en get_notifications: {e}")
+        return jsonify({"error": "Error al obtener notificaciones"}), 500
+
+
+
 
 
 @app.route('/api/candidate/profile/<int:id_afiliado>', methods=['GET', 'PUT'])
