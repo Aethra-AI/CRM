@@ -53,13 +53,7 @@ if not app.debug:
 github_pages_url = "https://henmir-hn.github.io/portal-empleo-henmir"
 
 # Reemplaza la línea CORS(app) con este bloque
-CORS(app, 
-     origins=["http://127.0.0.1:5500", "https://henmir-hn.github.io"], # Orígenes permitidos (desarrollo y producción)
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],              # Métodos HTTP permitidos
-     allow_headers=["Content-Type", "Authorization", "X-API-Key"],    # Cabeceras permitidas
-     supports_credentials=True
-)
-
+CORS(app, resources={r"/api/*": {"origins": "https://aethra-ai.github.io"}})
 # También, para las rutas públicas, necesitas una configuración separada o una más general
 # La siguiente configuración es más simple y debería funcionar para ambos casos:
 # Descomenta esta y comenta la anterior si sigues teniendo problemas.
